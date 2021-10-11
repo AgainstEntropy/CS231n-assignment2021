@@ -55,7 +55,14 @@ def svm_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    for i in range(num_train):
+        scores = X[i].dot(W)
+        for j in range(num_classes):
+            if j != y[i] and scores[j] - scores[y[i]] + 1 >= 0:
+                dW[:, j] += X[i]
+                dW[:, y[i]] -= X[i]
+    dW /= num_train
+    dW += 2*reg*W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -78,7 +85,14 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    num_train = X.shape[0]
+    scores = X.dot(W)
+    scores = scores - scores[range(num_train), y][:, np.newaxis] + 1
+
+    mask = np.ones(scores.shape)
+    mask[range(num_train), y] = 0
+    scores *= mask
+    loss = np.sum(np.maximum(0, scores)) / num_train
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
