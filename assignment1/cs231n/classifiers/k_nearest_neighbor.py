@@ -2,7 +2,7 @@ from builtins import range
 from builtins import object
 import numpy as np
 from past.builtins import xrange
-import time
+# import time
 
 
 class KNearestNeighbor(object):
@@ -68,7 +68,7 @@ class KNearestNeighbor(object):
         num_test = X.shape[0]
         num_train = self.X_train.shape[0]
         dists = np.zeros((num_test, num_train))
-        t0 = time.time()
+        # t0 = time.time()
         for i in range(num_test):
             for j in range(num_train):
                 #####################################################################
@@ -89,7 +89,7 @@ class KNearestNeighbor(object):
                 dists[i, j] = dist
 
                 # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-        return dists, time.time() - t0
+        return dists
 
     def compute_distances_one_loop(self, X):
         """
@@ -101,7 +101,7 @@ class KNearestNeighbor(object):
         num_test = X.shape[0]
         num_train = self.X_train.shape[0]
         dists = np.zeros((num_test, num_train))
-        t0 = time.time()
+        # t0 = time.time()
         for i in range(num_test):
             #######################################################################
             # TODO:                                                               #
@@ -114,7 +114,7 @@ class KNearestNeighbor(object):
             dists[i, :] = np.sqrt(np.sum(np.square((X[i] - self.X_train)), axis=1))  # 耗时30.34s
 
             # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-        return dists, time.time() - t0
+        return dists
 
     def compute_distances_no_loops(self, X):
         """
@@ -126,7 +126,7 @@ class KNearestNeighbor(object):
         num_test = X.shape[0]
         num_train = self.X_train.shape[0]
         dists = np.zeros((num_test, num_train))
-        t0 = time.time()
+        # t0 = time.time()
         #########################################################################
         # TODO:                                                                 #
         # Compute the l2 distance between all test points and all training      #
@@ -142,10 +142,15 @@ class KNearestNeighbor(object):
         #########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        dists = np.sqrt(np.sum(np.square((X[:, np.newaxis] - self.X_train[np.newaxis, :])), axis=2))  # 耗时**s
+        # dists[:, :] = np.sqrt(np.sum(np.square((X[:, np.newaxis] - self.X_train[np.newaxis, :])), axis=2))  # 内存过大，无法运行
+        dists = np.sqrt(
+            np.sum(np.square(X), axis=1, keepdims=True)
+            + np.sum(np.square(self.X_train), axis=1, keepdims=True).transpose()
+            - 2*np.dot(X, self.X_train.transpose())
+        )  # 耗时0.15s
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-        return dists, time.time() - t0
+        return dists
 
     def predict_labels(self, dists, k=1):
         """
