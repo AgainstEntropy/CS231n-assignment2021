@@ -37,6 +37,8 @@ def svm_loss_naive(W, X, y, reg):
             margin = scores[j] - correct_class_score + 1  # note delta = 1
             if margin > 0:
                 loss += margin
+                dW[:, j] += X[i]
+                dW[:, y[i]] -= X[i]
 
     # Right now the loss is a sum over all training examples, but we want it
     # to be an average instead so we divide by num_train.
@@ -55,12 +57,6 @@ def svm_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    for i in range(num_train):
-        scores = X[i].dot(W)
-        for j in range(num_classes):
-            if j != y[i] and scores[j] - scores[y[i]] + 1 >= 0:
-                dW[:, j] += X[i]
-                dW[:, y[i]] -= X[i]
     dW /= num_train
     dW += 2*reg*W
 
@@ -86,13 +82,13 @@ def svm_loss_vectorized(W, X, y, reg):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     num_train = X.shape[0]
-    scores = X.dot(W)
-    scores = scores - scores[range(num_train), y][:, np.newaxis] + 1
+    scores = X.dot(W)  # N*C = N*D dot D*C
+    margins = scores - scores[range(num_train), y][:, np.newaxis] + 1  # N*C
+    margins[range(num_train), y] = 0  # 排除j=y[i]的情况
+    margins = np.maximum(0, margins)  # 排除margin<0的情况
 
-    mask = np.ones(scores.shape)
-    mask[range(num_train), y] = 0
-    scores *= mask
-    loss = np.sum(np.maximum(0, scores)) / num_train
+    loss += np.sum(margins) / num_train
+    loss += reg * np.sum(W * W)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -107,7 +103,11 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    mask = np.zeros(margins.shape)  # N*C
+    mask[margins > 0] = 1
+    mask[range(num_train), y] = -np.sum(mask, axis=1)
+    dW += np.dot(X.T, mask) / num_train  # D*C = D*N dot N*C
+    dW += 2*reg*W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
