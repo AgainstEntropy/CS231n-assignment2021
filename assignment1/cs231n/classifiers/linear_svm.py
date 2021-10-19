@@ -57,12 +57,6 @@ def svm_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    for i in range(num_train):
-        scores = X[i].dot(W)
-        for j in range(num_classes):
-            if j != y[i] and scores[j] - scores[y[i]] + 1 >= 0:
-                dW[:, j] += X[i]
-                dW[:, y[i]] -= X[i]
     dW /= num_train
     dW += 2*reg*W
 
