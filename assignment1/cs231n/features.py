@@ -23,7 +23,7 @@ def extract_features(imgs, feature_fns, verbose=False):
     - verbose: Boolean; if true, print progress.
 
     Returns:
-    An array of shape (N, F_1 + ... + F_k) where each column is the concatenation
+    An array of shape (N, F_1 + ... + F_k) where each column (row?) is the concatenation
     of all features for a single image.
     """
     num_images = imgs.shape[0]
@@ -119,8 +119,8 @@ def hog_feature(im):
         cond2 = temp_ori > 0
         temp_mag = np.where(cond2, grad_mag, 0)
         orientation_histogram[:, :, i] = uniform_filter(temp_mag, size=(cx, cy))[
-            round(cx / 2) :: cx, round(cy / 2) :: cy
-        ].T
+                                         round(cx / 2):: cx, round(cy / 2):: cy
+                                         ].T
 
     return orientation_histogram.ravel()
 
