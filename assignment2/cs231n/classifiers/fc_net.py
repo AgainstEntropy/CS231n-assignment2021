@@ -23,16 +23,16 @@ class FullyConnectedNet(object):
     """
 
     def __init__(
-        self,
-        hidden_dims,
-        input_dim=3 * 32 * 32,
-        num_classes=10,
-        dropout_keep_ratio=1,
-        normalization=None,
-        reg=0.0,
-        weight_scale=1e-2,
-        dtype=np.float32,
-        seed=None,
+            self,
+            hidden_dims,
+            input_dim=3 * 32 * 32,
+            num_classes=10,
+            dropout_keep_ratio=1,
+            normalization=None,
+            reg=0.0,
+            weight_scale=1e-2,
+            dtype=np.float32,
+            seed=None,
     ):
         """Initialize a new FullyConnectedNet.
 
@@ -74,7 +74,13 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        self.params['W1'] = weight_scale * np.random.randn(input_dim, hidden_dims[0])
+        self.params['b1'] = np.zeros(hidden_dims[0])
+        for i in range(1, self.num_layers - 1):
+            self.params['W%d' % (i + 1)] = weight_scale * np.random.randn(hidden_dims[i-1], hidden_dims[i])
+            self.params['b%d' % (i + 1)] = np.zeros(hidden_dims[i])
+        self.params['W%d' % self.num_layers] = weight_scale * np.random.randn(hidden_dims[-1], num_classes)
+        self.params['b%d' % self.num_layers] = np.zeros(num_classes)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -148,7 +154,15 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        cache_hist = []
+        out_relu = X.copy()
+        for i in range(1, self.num_layers):
+            out, cache = affine_forward(out_relu, self.params['W%d' % i], self.params['b%d' % i])
+            out_relu, cache_relu = relu_forward(out)
+            cache_hist.append((cache, cache_relu))
+        scores, cache = affine_forward(out_relu,
+                                       self.params['W%d' % self.num_layers],
+                                       self.params['b%d' % self.num_layers])
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -175,7 +189,16 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, dout = softmax_loss(scores, y)
+        dout_relu, grads['W%d' % self.num_layers], grads['b%d' % self.num_layers] = affine_backward(dout, cache)
+        for i in range(self.num_layers-1, 0, -1):
+            cache, cache_relu = cache_hist[i - 1]
+            dout = relu_backward(dout_relu, cache_relu)
+            dout_relu, grads['W%d' % i], grads['b%d' % i] = affine_backward(dout, cache)
+
+        for k in range(1, self.num_layers):
+            loss += 0.5 * self.reg * np.sum(self.params['W%d' % k] ** 2)
+            grads['W%d' % k] += self.reg * self.params['W%d' % k]
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

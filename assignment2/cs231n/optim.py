@@ -69,7 +69,8 @@ def sgd_momentum(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    v = config["momentum"] * v - config["learning_rate"] * dw
+    next_w = w + v
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -152,7 +153,14 @@ def adam(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    t = config["t"] + 1
+    m = config["beta1"] * config["m"] + (1 - config["beta1"]) * dw
+    v = config["beta2"] * config["v"] + (1 - config["beta2"]) * (dw ** 2)
+    m = m / (1 - config["beta1"] ** t)
+    v = v / (1 - config["beta2"] ** t)
+    next_w = w - config["learning_rate"] * m / (np.sqrt(v) + config["epsilon"])
+
+    config["m"], config["v"], config["t"] = m, v, t
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
