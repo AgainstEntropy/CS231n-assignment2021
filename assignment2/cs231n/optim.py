@@ -108,7 +108,10 @@ def rmsprop(w, dw, config=None):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    cache = config["decay_rate"] * config["cache"] + (1 - config["decay_rate"]) * (dw ** 2)
+    next_w = w - config["learning_rate"] * dw / (np.sqrt(cache) + config["epsilon"])
+
+    config["cache"] = cache
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -156,9 +159,9 @@ def adam(w, dw, config=None):
     t = config["t"] + 1
     m = config["beta1"] * config["m"] + (1 - config["beta1"]) * dw
     v = config["beta2"] * config["v"] + (1 - config["beta2"]) * (dw ** 2)
-    m = m / (1 - config["beta1"] ** t)
-    v = v / (1 - config["beta2"] ** t)
-    next_w = w - config["learning_rate"] * m / (np.sqrt(v) + config["epsilon"])
+    mt = m / (1 - config["beta1"] ** t)
+    vt = v / (1 - config["beta2"] ** t)
+    next_w = w - config["learning_rate"] * mt / (np.sqrt(vt) + config["epsilon"])
 
     config["m"], config["v"], config["t"] = m, v, t
 
