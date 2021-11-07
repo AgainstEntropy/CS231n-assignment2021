@@ -346,13 +346,13 @@ def batchnorm_backward_alt(dout, cache):
     N, D = x.shape
 
     dout_unit = dout * gamma  # N*D
-    delta = np.sqrt(var + eps)  # 1*D
+    sigma = np.sqrt(var + eps)  # 1*D
 
-    dvar = np.sum(dout_unit * out_unit / (-2 * delta ** 2), axis=0)  # 1*D
-    dvar_dmean = -2 / N * np.sum(out_unit * delta, axis=0)  # 1*D
-    dmean = np.sum(dout_unit / (-delta), axis=0) + dvar * dvar_dmean  # 1*D
+    dvar = np.sum(dout_unit * out_unit / (-2 * sigma ** 2), axis=0)  # 1*D
+    dvar_dmean = -2 / N * np.sum(out_unit * sigma, axis=0)  # 1*D
+    dmean = np.sum(dout_unit / (-sigma), axis=0) + dvar * dvar_dmean  # 1*D
 
-    dx = dout_unit / delta + dmean / N + dvar * out_unit * delta * 2 / N  # N*D
+    dx = dout_unit / sigma + dmean / N + dvar * out_unit * sigma * 2 / N  # N*D
     dgamma = np.sum(dout * out_unit, axis=0)  # 1*D
     dbeta = np.sum(dout, axis=0)  # 1*D
 
@@ -399,7 +399,15 @@ def layernorm_forward(x, gamma, beta, ln_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x = x.T
+    N, D = x.shape
+    mean = np.sum(x, axis=0) / N
+    var = np.sum((x - mean) ** 2, axis=0) / N
+    out_unit = (x - mean) / np.sqrt(var + eps)
+    out_unit = out_unit.T
+    out = gamma * out_unit + beta
+
+    cache = x, mean, var, eps, gamma, beta, out_unit.T
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -433,7 +441,21 @@ def layernorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x, mean, var, eps, gamma, beta, out_unit = cache
+    N, D = x.shape
+
+    dout_unit = dout * gamma  # N*D
+    dout_unit = dout_unit.T  # D*N
+    sigma = np.sqrt(var + eps)  # 1*D
+
+    dvar = np.sum(dout_unit * out_unit / (-2 * sigma ** 2), axis=0)  # 1*N
+    dvar_dmean = -2 / N * np.sum(out_unit * sigma, axis=0)  # 1*N
+    dmean = np.sum(dout_unit / (-sigma), axis=0) + dvar * dvar_dmean  # 1*N
+
+    dx = dout_unit / sigma + dmean / N + dvar * out_unit * sigma * 2 / N  # D*N
+    dx = dx.T
+    dgamma = np.sum(dout * out_unit.T, axis=0)  # 1*D
+    dbeta = np.sum(dout, axis=0)  # 1*D
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
