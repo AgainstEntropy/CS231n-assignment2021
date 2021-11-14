@@ -589,7 +589,7 @@ def conv_forward_naive(x, w, b, conv_param):
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
     N, C, H, W = x.shape
-    F, C, HH, WW = w.shape
+    F, _, HH, WW = w.shape
     stride, pad = conv_param["stride"], conv_param["pad"]
 
     x_pad = np.zeros((N, C, H + 2 * pad, W + 2 * pad))
@@ -639,7 +639,7 @@ def conv_backward_naive(dout, cache):
 
     x, w, b, conv_param = cache
     N, C, H, W = x.shape
-    F, C, HH, WW = w.shape
+    F, _, HH, WW = w.shape
     stride, pad = conv_param["stride"], conv_param["pad"]
     x_pad = np.zeros((N, C, H + 2 * pad, W + 2 * pad))
     x_pad[:, :, pad:pad + H, pad:pad + W] = x.copy()
