@@ -812,7 +812,14 @@ def spatial_batchnorm_forward(x, gamma, beta, bn_param):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = x.shape
+    x_trans = x.reshape((N, C, -1)).transpose((1, 0, 2))  # C*N*D
+    out_trans = np.zeros_like(x_trans)
+    cache = []
+    for c in range(C):
+        out_trans[c], cache_c = batchnorm_forward(x_trans[c], gamma[c], beta[c], bn_param)
+        cache.append(cache_c)
+    out = out_trans.transpose((1, 0, 2)).reshape((N, C, H, W))  # N*C*H*W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -845,7 +852,15 @@ def spatial_batchnorm_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, C, H, W = dout.shape
+    D = H * W
+    dout_trans = dout.reshape((N, C, D)).transpose((1, 0, 2))  # C*N*D
+    dx_trans = np.zeros_like(dout_trans)
+    dgamma, dbeta = np.zeros((C, D)), np.zeros((C, D))
+    for c in range(C):
+        dx_trans[c], dgamma[c], dbeta[c] = batchnorm_backward(dout_trans[c], cache[c])
+    dx = dx_trans.transpose((1, 0, 2)).reshape((N, C, H, W))  # N*C*H*W
+    dgamma, dbeta = np.sum(dgamma, axis=1), np.sum(dbeta, axis=1)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
