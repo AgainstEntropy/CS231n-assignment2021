@@ -63,7 +63,13 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        C, H, W = input_dim
+        self.params["W1"] = weight_scale * np.random.randn(num_filters, C, filter_size, filter_size)
+        self.params["b1"] = np.zeros(num_filters)
+        self.params["W2"] = weight_scale * np.random.randn(num_filters * (H // 2) * (W // 2), hidden_dim)
+        self.params["b2"] = np.zeros(hidden_dim)
+        self.params["W3"] = weight_scale * np.random.randn(hidden_dim, num_classes)
+        self.params["b3"] = np.zeros(num_classes)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -102,7 +108,9 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        conv_out, conv_cache = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
+        fc_out, fc_cache1 = affine_relu_forward(conv_out, W2, b2)
+        scores, fc_cache2 = affine_forward(fc_out, W3, b3)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -125,7 +133,14 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, dout = softmax_loss(scores, y)
+        dfc_out, grads["W3"], grads["b3"] = affine_backward(dout, fc_cache2)
+        dconv_out, grads["W2"], grads["b2"] = affine_relu_backward(dfc_out, fc_cache1)
+        dx, grads["W1"], grads["b1"] = conv_relu_pool_backward(dconv_out, conv_cache)
+
+        for k in range(1, 4):
+            loss += 0.5 * self.reg * np.sum(self.params['W%d' % k] ** 2)
+            grads['W%d' % k] += self.reg * self.params['W%d' % k]
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
