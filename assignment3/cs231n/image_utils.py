@@ -7,7 +7,6 @@ from imageio import imread
 from PIL import Image
 
 
-
 def blur_image(X):
     """
     A very gentle image blurring operation, to be used as a regularizer for
