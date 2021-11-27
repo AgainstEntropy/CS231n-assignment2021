@@ -148,7 +148,18 @@ class CaptioningRNN:
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # forward pass
+        h0, h0_cache = affine_forward(features, W_proj, b_proj)  # (N, H) -> (N, H)
+        word_vecs, w2v_cache = word_embedding_forward(captions_in, W_embed)  # (N, T, W)
+        h, rnn_cache = rnn_forward(word_vecs, h0, Wx, Wh, b)  # (N, T, H)
+        scores, scores_cache = temporal_affine_forward(h, W_vocab, b_vocab)  # (N, T, V)
+        loss, dscores = temporal_softmax_loss(scores, captions_out, mask)
+
+        # backward pass
+        dh, grads["W_vocab"], grads["b_vocab"] = temporal_affine_backward(dscores, scores_cache)
+        dword_vecs, dh0, grads["Wx"], grads["Wh"], grads["b"] = rnn_backward(dh, rnn_cache)
+        grads["W_embed"] = word_embedding_backward(dword_vecs, w2v_cache)
+        _, grads["W_proj"], grads["b_proj"] = affine_backward(dh0, h0_cache)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -216,7 +227,17 @@ class CaptioningRNN:
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        start_word_vec = W_embed[self._start]  # (W, )
+        next_word_vecs = np.tile(start_word_vec, (N, 1))  # (N, W)
+        next_h = features.dot(W_proj) + b_proj  # (N, H)
+
+        for t in range(max_length):
+            prev_h, prev_word_vecs = next_h, next_word_vecs
+            next_h, _ = rnn_step_forward(prev_word_vecs, prev_h, Wx, Wh, b)  # (N, H)
+            scores = next_h.dot(W_vocab) + b_vocab  # (N, V)
+            word_idxs = np.argmax(scores, axis=1)  # (N, )
+            captions[:, t] = word_idxs.T  # (N, )
+            next_word_vecs = W_embed[word_idxs]  # (N, W)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
