@@ -61,7 +61,7 @@ def image_from_url(url):
         with open(fname, "wb") as ff:
             ff.write(f.read())
         img = imread(fname)
-        os.remove(fname)
+        os.remove(fname)  # something wrong here and always need to annotate this line
         return img
     except urllib.error.URLError as e:
         print("URL Error: ", e.reason, url)
