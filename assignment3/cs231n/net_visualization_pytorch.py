@@ -1,9 +1,11 @@
 import torch
 import random
 import torchvision.transforms as T
+from torch.nn import functional as F
 import numpy as np
 from .image_utils import SQUEEZENET_MEAN, SQUEEZENET_STD
 from scipy.ndimage.filters import gaussian_filter1d
+
 
 def compute_saliency_maps(X, y, model):
     """
@@ -34,13 +36,20 @@ def compute_saliency_maps(X, y, model):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    scores = model(X)  # (N, C)
+    p = F.softmax(scores, dim=1)
+    loss = F.cross_entropy(p, y)
+    loss.backward()
+
+    saliency = X.grad  # (N, 3, H, W)
+    saliency = torch.max(torch.abs(saliency), dim=1).values  # (N, H, W)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
     #                             END OF YOUR CODE                               #
     ##############################################################################
     return saliency
+
 
 def make_fooling_image(X, target_y, model):
     """
@@ -76,13 +85,29 @@ def make_fooling_image(X, target_y, model):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    t = 0
+    while True:
+        t += 1
+        scores = model(X_fooling)  # (1, C)
+        predict_y = torch.argmax(scores, dim=1).item()
+        if predict_y == target_y or t >= 20:
+            break
+
+        loss = scores[0, target_y]
+        print(f'Trained {t} times: score = {loss}\tpredict idx: {predict_y}')
+        loss.backward()
+
+        with torch.no_grad():
+            dX = X_fooling.grad
+            X_fooling += learning_rate * dX / dX.norm()
+            X_fooling.grad.zero_()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
     #                             END OF YOUR CODE                               #
     ##############################################################################
     return X_fooling
+
 
 def class_visualization_update_step(img, model, target_y, l2_reg, learning_rate):
     ########################################################################
@@ -94,7 +119,14 @@ def class_visualization_update_step(img, model, target_y, l2_reg, learning_rate)
     ########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    scores = model(img)[0]
+    score = scores[target_y]
+    loss = score - l2_reg * torch.sum(img ** 2)
+    loss.backward()
+
+    with torch.no_grad():
+        img += learning_rate * img.grad / img.grad.norm()
+        img.grad.zero_()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ########################################################################
@@ -112,6 +144,7 @@ def preprocess(img, size=224):
     ])
     return transform(img)
 
+
 def deprocess(img, should_rescale=True):
     transform = T.Compose([
         T.Lambda(lambda x: x[0]),
@@ -122,10 +155,12 @@ def deprocess(img, should_rescale=True):
     ])
     return transform(img)
 
+
 def rescale(x):
     low, high = x.min(), x.max()
     x_rescaled = (x - low) / (high - low)
     return x_rescaled
+
 
 def blur_image(X, sigma=1):
     X_np = X.cpu().clone().numpy()
@@ -133,6 +168,7 @@ def blur_image(X, sigma=1):
     X_np = gaussian_filter1d(X_np, sigma, axis=3)
     X.copy_(torch.Tensor(X_np).type_as(X))
     return X
+
 
 def jitter(X, ox, oy):
     """
