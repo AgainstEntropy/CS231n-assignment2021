@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -7,12 +8,14 @@ import math
 This file defines layer types that are commonly used for transformers.
 """
 
+
 class PositionalEncoding(nn.Module):
     """
     Encodes information about the positions of the tokens in the sequence. In
     this case, the layer has no learnable parameters, since it is a simple
     function of sines and cosines.
     """
+
     def __init__(self, embed_dim, dropout=0.1, max_len=5000):
         """
         Construct the PositionalEncoding layer.
@@ -38,7 +41,17 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        for i in range(max_len):
+            for j in range(embed_dim):
+                if j % 2 == 0:
+                    pe[0, i, j] = np.sin(i * 10000**(-j / embed_dim))
+                else:
+                    pe[0, i, j] = np.cos(i * 10000 ** (-(j-1) / embed_dim))
+
+        # position = torch.arange(0, max_len).unsqueeze(1)
+        # exp_term = torch.exp(torch.arange(0, embed_dim, 2) * -(math.log(10000) / embed_dim))
+        # pe[:, :, 0::2] = torch.sin(position * exp_term)
+        # pe[:, :, 1::2] = torch.cos(position * exp_term)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -70,7 +83,8 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        output = x + self.pe[:, :S, :]
+        output = self.dropout(output)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -117,7 +131,7 @@ class MultiHeadAttention(nn.Module):
         self.query = nn.Linear(embed_dim, embed_dim)
         self.value = nn.Linear(embed_dim, embed_dim)
         self.proj = nn.Linear(embed_dim, embed_dim)
-        
+
         ############################################################################
         # TODO: Initialize any remaining layers and parameters to perform the      #
         # attention operation as defined in Transformer_Captioning.ipynb. We will  #
@@ -126,7 +140,8 @@ class MultiHeadAttention(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        self.num_heads = num_heads
+        self.dropout = nn.Dropout(dropout)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -174,12 +189,24 @@ class MultiHeadAttention(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        H = self.num_heads
+        Q_H = self.query(query).reshape(N, S, H, D // H).transpose(1, 2)  # (N, H, S, E//H)
+        K_H = self.key(key).reshape(N, T, H, D // H).transpose(1, 2)  # (N, H, T, E//H)
+        V_H = self.value(value).reshape(N, T, H, D // H).transpose(1, 2)  # (N, H, T, E//H)
+
+        K_HT = K_H.transpose(2, 3)  # (N, H, E//H, T)
+
+        A = torch.matmul(Q_H, K_HT) / np.sqrt(D / H)  # (N, H, S, E//H) batch_x (N, H, E//H, T) -> (N, H, S, T)
+        if attn_mask is not None:
+            A = A.masked_fill(attn_mask == 0, -float('inf'))
+        A = self.dropout(A.softmax(dim=-1))
+        # A = torch.where(torch.isnan(A), torch.full_like(A, 0), A)  # replace NaN with 0
+        output_H = torch.matmul(A, V_H)  # (N, H, S, E // H)
+        output = output_H.transpose(2, 1).reshape(N, S, D)
+        output = self.proj(output)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
         return output
-
-

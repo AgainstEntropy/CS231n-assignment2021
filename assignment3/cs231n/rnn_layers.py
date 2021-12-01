@@ -201,17 +201,17 @@ def rnn_backward(dh, cache):
     db = np.zeros_like(b)
     dx = np.zeros((T, N, D))
     dh = dh.transpose((1, 0, 2))  # (T, N, H)
-    dh_t = np.zeros_like(dh[0])  # (N, H)
+    dprev_h = np.zeros_like(dh[0])  # (N, H)
 
     for t in range(-1, -T-1, -1):
-        dh_t += dh[t]
-        dx[t], dh_t, dWx_t, dWh_t, db_t = rnn_step_backward(dh_t, cache[t])
+        dnext_h = dprev_h + dh[t]
+        dx[t], dprev_h, dWx_t, dWh_t, db_t = rnn_step_backward(dnext_h, cache[t])
         dWx += dWx_t
         dWh += dWh_t
         db += db_t
 
     dx = dx.transpose((1, 0, 2))  # (N, T, D)
-    dh0 = dh_t  # (N, H)
+    dh0 = dprev_h  # (N, H)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
