@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from .contrastive_loss import *
 
+
 def train(model, data_loader, train_optimizer, epoch, epochs, batch_size=32, temperature=0.5, device='cuda'):
     """Trains the model defined in ./model.py with one epoch.
     
@@ -27,7 +28,7 @@ def train(model, data_loader, train_optimizer, epoch, epochs, batch_size=32, tem
     for data_pair in train_bar:
         x_i, x_j, target = data_pair
         x_i, x_j = x_i.to(device), x_j.to(device)
-        
+
         out_left, out_right, loss = None, None, None
         ##############################################################################
         # TODO: Start of your code.                                                  #
@@ -36,12 +37,14 @@ def train(model, data_loader, train_optimizer, epoch, epochs, batch_size=32, tem
         # Run x_i and x_j through the model to get out_left, out_right.              #
         # Then compute the loss using simclr_loss_vectorized.                        #
         ##############################################################################
-        
-        
+
+        (feature_left, out_left), (feature_right, out_right) = model(x_i), model(x_j)
+        loss = simclr_loss_vectorized(out_left, out_right, temperature, device)
+
         ##############################################################################
         #                               END OF YOUR CODE                             #
         ##############################################################################
-        
+
         train_optimizer.zero_grad()
         loss.backward()
         train_optimizer.step()
@@ -104,7 +107,7 @@ def test(model, memory_data_loader, test_data_loader, epoch, epochs, c, temperat
             total_num += data.size(0)
             # compute cos similarity between each feature vector and feature bank ---> [B, N]
             sim_matrix = torch.mm(feature, feature_bank)
-            
+
             # [B, K]
             sim_weight, sim_indices = sim_matrix.topk(k=k, dim=-1)
             # [B, K]

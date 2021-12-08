@@ -18,12 +18,13 @@ def sim(z_i, z_j):
     #                                                                            #
     # HINT: torch.linalg.norm might be helpful.                                  #
     ##############################################################################
-    
-    
+
+    norm_dot_product = torch.dot(z_i, z_j) / (z_i.norm() * z_j.norm())
+
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
-    
+
     return norm_dot_product
 
 
@@ -41,14 +42,14 @@ def simclr_loss_naive(out_left, out_right, tau):
     - A scalar value; the total loss across all positive pairs in the batch. See notebook for definition.
     """
     N = out_left.shape[0]  # total number of training examples
-    
-     # Concatenate out_left and out_right into a 2*N x D tensor.
+
+    # Concatenate out_left and out_right into a 2*N x D tensor.
     out = torch.cat([out_left, out_right], dim=0)  # [2*N, D]
-    
+
     total_loss = 0
     for k in range(N):  # loop through each positive pair (k, k+N)
-        z_k, z_k_N = out[k], out[k+N]
-        
+        z_k, z_k_N = out[k], out[k + N]
+
         ##############################################################################
         # TODO: Start of your code.                                                  #
         #                                                                            #
@@ -56,15 +57,24 @@ def simclr_loss_naive(out_left, out_right, tau):
         ##############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        numerator_k = np.exp(sim(z_k, z_k_N) / tau)
+        numerator_kN = np.exp(sim(z_k_N, z_k) / tau)
+        denominator_k, denominator_kN = 0, 0
+        for i in range(2 * N):
+            denominator_k += np.exp(sim(z_k, out[i]) / tau)
+            denominator_kN += np.exp(sim(z_k_N, out[i]) / tau)
+        denominator_k -= np.exp(1 / tau)
+        denominator_kN -= np.exp(1 / tau)
+
+        total_loss += -np.log(numerator_k / denominator_k) - np.log(numerator_kN / denominator_kN)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-         ##############################################################################
+        ##############################################################################
         #                               END OF YOUR CODE                             #
         ##############################################################################
-    
+
     # In the end, we need to divide the total loss by 2N, the number of samples in the batch.
-    total_loss = total_loss / (2*N)
+    total_loss = total_loss / (2 * N)
     return total_loss
 
 
@@ -81,19 +91,20 @@ def sim_positive_pairs(out_left, out_right):
     - A Nx1 tensor; each row k is the normalized dot product between out_left[k] and out_right[k].
     """
     pos_pairs = None
-    
+
     ##############################################################################
     # TODO: Start of your code.                                                  #
     #                                                                            #
     # HINT: torch.linalg.norm might be helpful.                                  #
     ##############################################################################
-    
+
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    pos_pairs = torch.sum(out_left * out_right, dim=1, keepdim=True) / \
+                (out_left.norm(dim=1, keepdim=True) * out_right.norm(dim=1, keepdim=True))
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-    
+
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -111,17 +122,21 @@ def compute_sim_matrix(out):
     - sim_matrix: 2N x 2N tensor; each element i, j in the matrix is the normalized dot product between out[i] and out[j].
     """
     sim_matrix = None
-    
+
     ##############################################################################
     # TODO: Start of your code.                                                  #
     ##############################################################################
-    
+
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = out.size(0)
+    sim_matrix = torch.zeros(N, N)
+    for i in range(N):
+        for j in range(N):
+            sim_matrix[i, j] = sim(out[i], out[j])
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-    
+
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
@@ -134,29 +149,31 @@ def simclr_loss_vectorized(out_left, out_right, tau, device='cuda'):
     Inputs and output are the same as in simclr_loss_naive.
     """
     N = out_left.shape[0]
-    
+
     # Concatenate out_left and out_right into a 2*N x D tensor.
     out = torch.cat([out_left, out_right], dim=0)  # [2*N, D]
-    
+
     # Compute similarity matrix between all pairs of augmented examples in the batch.
     sim_matrix = compute_sim_matrix(out)  # [2*N, 2*N]
-    
+
     ##############################################################################
     # TODO: Start of your code. Follow the hints.                                #
     ##############################################################################
-    
+
     # Step 1: Use sim_matrix to compute the denominator value for all augmented samples.
     # Hint: Compute e^{sim / tau} and store into exponential, which should have shape 2N x 2N.
     exponential = None
-    
+    exponential = torch.exp(sim_matrix / tau).to(device)
+
     # This binary mask zeros out terms where k=i.
     mask = (torch.ones_like(exponential, device=device) - torch.eye(2 * N, device=device)).to(device).bool()
-    
+
     # We apply the binary mask.
     exponential = exponential.masked_select(mask).view(2 * N, -1)  # [2*N, 2*N-1]
-    
+
     # Hint: Compute the denominator values for all augmented samples. This should be a 2N x 1 vector.
     denom = None
+    denom = torch.sum(exponential, dim=1)
 
     # Step 2: Compute similarity between positive pairs.
     # You can do this in two ways: 
@@ -164,32 +181,39 @@ def simclr_loss_vectorized(out_left, out_right, tau, device='cuda'):
     # Option 2: Use sim_positive_pairs().
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    pos_pair_k = sim_positive_pairs(out_left, out_right).squeeze().to(device)
+    pos_pair_kN = sim_positive_pairs(out_right, out_left).squeeze().to(device)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-    
+
     # Step 3: Compute the numerator value for all augmented samples.
     numerator = None
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    numerator_k = torch.exp(pos_pair_k / tau)
+    numerator_kN = torch.exp(pos_pair_kN / tau)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
-    
+
     # Step 4: Now that you have the numerator and denominator for all augmented samples, compute the total loss.
     loss = None
-    
+
+    loss = -torch.log(numerator_k / denom[:N]) - torch.log(numerator_kN / denom[N:])
+    loss = torch.sum(loss) / (2 * N)
+
     ##############################################################################
     #                               END OF YOUR CODE                             #
     ##############################################################################
-    
+
     return loss
+
 
 # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
 pass
 
+
 # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-def rel_error(x,y):
+def rel_error(x, y):
     return np.max(np.abs(x - y) / (np.maximum(1e-8, np.abs(x) + np.abs(y))))
